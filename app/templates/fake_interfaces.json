@@ -1,0 +1,13 @@
+{
+    "@odata.type": "#EthernetInterfaceCollection.EthernetInterfaceCollection",
+    "Name": "Ethernet Interface Collection",
+    "Description": "Fake NICs",
+    "Members@odata.count": 0,
+    "Members": [
+        
+    ],
+    "Oem": {},
+    "@odata.context": "/redfish/v1/$metadata#EthernetInterfaceCollection.EthernetInterfaceCollection",
+    "@odata.id": "/redfish/v1/Systems/1"
+}
+
