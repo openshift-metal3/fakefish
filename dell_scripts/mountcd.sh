@@ -4,15 +4,18 @@
 #### This script has to mount the iso in the server's virtualmedia and return 0 if operation succeeded, 1 otherwise
 #### Note: Iso image to mount will be received as the first argument ($1)
 
-ISO=${1}
+BMC_ENDPOINT=${1}
+USERNAME=${2}
+PASSWORD=${3}
+ISO=${4}
 
 # Disconnect image just in case
-/opt/dell/srvadmin/bin/idracadm7 -r 192.168.1.10 -u root -p calvin remoteimage -d
+/opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${USERNAME} -p ${PASSWORD} remoteimage -d
 
 # Connect image
-/opt/dell/srvadmin/bin/idracadm7 -r 192.168.1.10 -u root -p calvin remoteimage -c -l ${ISO}
+/opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${USERNAME} -p ${PASSWORD} remoteimage -c -l ${ISO}
 
-if ! /opt/dell/srvadmin/bin/idracadm7 -r 192.168.1.10 -u root -p calvin remoteimage -s | grep ${ISO}; then
+if ! /opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${USERNAME} -p ${PASSWORD} remoteimage -s | grep ${ISO}; then
   exit 1
 fi
 
