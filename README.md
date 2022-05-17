@@ -8,13 +8,13 @@ The way it works is by running a set of scripts that interact with the hardware 
 
 The [app/](./app/) directory contains the FakeFish application. Inside the [custom_scripts](./app/custom_scripts/) folder we need to create the following scripts:
 
-|Script|What should it do?|Script parameters|
-|------|------------------|-----------------|
-|`poweron.sh`|Power on the server|`$1` BMC IP, `$2` USERNAME, `$3` PASSWORD|
-|`poweroff.sh`|Power off the server|`$1` BMC IP, `$2` USERNAME, `$3` PASSWORD|
-|`bootfromcdonce.sh`|Set server to boot from virtual CD once|`$1` BMC IP, `$2` USERNAME, `$3` PASSWORD|
-|`mountcd.sh`|Mount the iso received in the server's virtual CD|`$1` BMC IP, `$2` USERNAME, `$3` PASSWORD, `$4` ISO FILE URL|
-|`unmountcd.sh`|Unmount the iso from the server's virtual CD|`$1` BMC IP, `$2` USERNAME, `$3` PASSWORD|
+|Script|What should it do?|Env Vars|Script parameters|
+|------|------------------|--------|-----------------|
+|`poweron.sh`|Power on the server|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
+|`poweroff.sh`|Power off the server|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
+|`bootfromcdonce.sh`|Set server to boot from virtual CD once|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
+|`mountcd.sh`|Mount the iso received in the server's virtual CD|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD| `$1` ISO FILE URL|
+|`unmountcd.sh`|Unmount the iso from the server's virtual CD|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
 
 The script names must match above naming, you can check the [dell_scripts](./dell_scripts/) folder to find example scripts with the correct naming.
 

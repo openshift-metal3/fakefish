@@ -57,7 +57,8 @@ def system_resource():
            else:
                app.logger.info('Running script that sets boot from VirtualCD once')
                try:
-                   subprocess.check_call(['custom_scripts/bootfromcdonce.sh', bmc_ip, username, password])
+                   my_env = set_env_vars(bmc_ip, username, password)
+                   subprocess.check_call(['custom_scripts/bootfromcdonce.sh'], env=my_env)
                except subprocess.CalledProcessError as e:
                    return ('Failed to set boot from virtualcd once', 400)
 
@@ -84,14 +85,16 @@ def system_reset_action():
     if reset_type == 'On':
         app.logger.info('Running script that powers on the server')
         try:
-            subprocess.check_call(['custom_scripts/poweron.sh', bmc_ip, username, password])
+            my_env = set_env_vars(bmc_ip, username, password)
+            subprocess.check_call(['custom_scripts/poweron.sh'], env=my_env)
         except subprocess.CalledProcessError as e:
             return ('Failed to poweron the server', 400)
         power_state = 'On'
     else:
         app.logger.info('Running script that powers off the server')
         try:
-            subprocess.check_call(['custom_scripts/poweroff.sh', bmc_ip, username, password])
+            my_env = set_env_vars(bmc_ip, username, password)
+            subprocess.check_call(['custom_scripts/poweroff.sh'], env=my_env)
         except subprocess.CalledProcessError as e:
             return ('Failed to poweroff the server', 400)
         power_state = 'Off'
@@ -126,7 +129,8 @@ def virtualmedia_insert():
         image_url = image
         app.logger.info('Running script that mounts cd with iso %s', image)
         try:
-            subprocess.check_call(['custom_scripts/mountcd.sh', bmc_ip, username, password, image_url])
+            my_env = set_env_vars(bmc_ip, username, password)
+            subprocess.check_call(['custom_scripts/mountcd.sh', image_url], env=my_env)
         except subprocess.CalledProcessError as e:
             return ('Failed to mount virtualcd', 400)
         return '', 204
@@ -135,14 +139,15 @@ def virtualmedia_insert():
           methods=['POST'])
 def virtualmedia_eject():
     global bmc_ip
-    username, password = get_credentials(flask.request)
     global inserted
     global image_url
+    username, password = get_credentials(flask.request)
     inserted = False
     image_url = ''
     app.logger.info('Running script that unmounts cd')
     try:
-        subprocess.check_call(['custom_scripts/unmountcd.sh', bmc_ip, username, password])
+        my_env = set_env_vars(bmc_ip, username, password)
+        subprocess.check_call(['custom_scripts/unmountcd.sh'], env=my_env)
     except subprocess.CalledProcessError as e:
         return ('Failed to unmount virtualcd', 400)
     return '', 204
@@ -160,6 +165,13 @@ def get_credentials(flask_request):
     app.logger.debug('Username: ' + username + ', password: ' + password)
     return username, password
 
+def set_env_vars(bmc_endpoint, username, password):
+    my_env = os.environ.copy()
+    my_env["BMC_ENDPOINT"] = bmc_endpoint
+    my_env["BMC_USERNAME"] = username
+    my_env["BMC_PASSWORD"] = password
+    return my_env
+
 def run():
     """
 
@@ -169,13 +181,12 @@ def run():
 
 if __name__ == '__main__':
 
+    bmc_ip = os.environ.get('BMC_IP', None)
+    if bmc_ip is None:
+        app.logger.error('Configure the BMC IP using the environment variable BMC_IP')
+        exit()
+
     inserted = False
     image_url = ''
     power_state = 'On'
-    bmc_ip = os.environ.get('BMC_IP', None)
-    if bmc_ip is not None:
-        app.logger.info(bmc_ip)
-    else:
-        app.logger.error('Configure the BMC IP using the environment variable BMC_IP')
-        exit()
     run()
