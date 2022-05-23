@@ -6,15 +6,15 @@
 
 The way it works is by running a set of scripts that interact with the hardware using vendor tools/other methods while exposing a fake RedFish API that Metal3 can query.
 
-The [app/](./app/) directory contains the FakeFish application. Inside the `app` directory we can find the [custom_scripts](./app/custom_scripts/) folder where we need to create scripts:
+The [app/](./app/) directory contains the FakeFish application. Inside the [custom_scripts](./app/custom_scripts/) folder we need to create the following scripts:
 
-|Script|What should it do?|
-|------|----------------|
-|`poweron.sh`|Power on the server|
-|`poweroff.sh`|Power off the server|
-|`bootfromcdonce.sh`|Set server to boot from virtual CD once|
-|`mountcd.sh`|Mount the iso received in the server's virtual CD|
-|`unmountcd.sh`|Unmount the iso from the server's virtual CD|
+|Script|What should it do?|Env Vars|Script parameters|
+|------|------------------|--------|-----------------|
+|`poweron.sh`|Power on the server|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
+|`poweroff.sh`|Power off the server|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
+|`bootfromcdonce.sh`|Set server to boot from virtual CD once|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
+|`mountcd.sh`|Mount the iso received in the server's virtual CD|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD| `$1` ISO FILE URL|
+|`unmountcd.sh`|Unmount the iso from the server's virtual CD|BMC_ENDPOINT BMC_USERNAME BMC_PASSWORD|None|
 
 The script names must match above naming, you can check the [dell_scripts](./dell_scripts/) folder to find example scripts with the correct naming.
 
@@ -39,23 +39,23 @@ A [Containerfile](./custom_scripts/Containerfile) is included, so users can buil
 
 You need a FakeFish process for each server you plan to install. Think of FakeFish like if it was a custom implementation of a BMC for that specific server.
 
-Since you will be potentially running multiple FakeFish instances, you will make use of an environment variable to configure in which port a given FakeFish instance listens on. On top of that, you need to do a bind mount for the folder containing the scripts for managing that specific server.
+Since you will be potentially running multiple FakeFish instances, you will make use of an environment variable to configure in which port a given FakeFish instance listens on and another one to configure which BMC IP it provides service to. On top of that, you can do a bind mount for the folder containing the scripts for managing that specific server or use the scripts inside the container image.
 
 An example can be found below:
 
 > **NOTE**: Every container is mapped to a single BMC, but if more hosts are required, different ports can be used (9001, 9002,...)
 
-```sh
-podman run -p 9000:9000 -e PORT=9000 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:v0
+~~~sh
+podman run -p 9000:9000 -e PORT=9000 -e BMC_IP=172.20.10.10 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:v0
 
 sudo firewall-cmd --add-port=9000/tcp
-```
+~~~
 
 Then, in the `install-config.yaml` file, it is required to specify the IP where the container is running instead of the 'real' BMC:
 
-```yaml
+~~~yaml
 bmcAddress: redfish-virtualmedia://192.168.1.10:9000/redfish/v1/Systems/1
-```
+~~~
 
 ## Logs
 
@@ -63,8 +63,8 @@ In a successful execution you should see something like this in the logs:
 
 - Starting FakeFish
 
-    ```sh
-    $ podman run -p 9000:9000 -e PORT=9000 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:v0
+    ~~~sh
+    $ podman run -p 9000:9000 -e PORT=9000 -e BMC_IP=172.20.10.10 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:v0
 
      * Serving Flask app 'fakefish' (lazy loading)
      * Environment: production
@@ -74,11 +74,11 @@ In a successful execution you should see something like this in the logs:
      * Running on all addresses.
        WARNING: This is a development server. Do not use it in a production deployment.
      * Running on https://10.19.3.25:9000/ (Press CTRL+C to quit)
-    ```
+    ~~~
 
 - Provisioning Logs
 
-    ```sh
+    ~~~sh
     10.19.3.23 - - [20/Apr/2022 13:17:09] "GET /redfish/v1/Systems/1 HTTP/1.1" 200 -
     10.19.3.23 - - [20/Apr/2022 13:17:09] "GET /redfish/v1/Systems/1 HTTP/1.1" 200 -
     10.19.3.23 - - [20/Apr/2022 13:17:09] "GET /redfish/v1/Systems/1/BIOS HTTP/1.1" 404 -
@@ -140,11 +140,11 @@ In a successful execution you should see something like this in the logs:
 
     10.19.3.23 - - [20/Apr/2022 13:19:04] "POST /redfish/v1/Systems/1/Actions/ComputerSystem.Reset HTTP/1.1" 204 -
     10.19.3.23 - - [20/Apr/2022 13:19:05] "GET /redfish/v1/Systems/1 HTTP/1.1" 200 -
-    ```
+    ~~~
 
 - Deprovisioning Logs
 
-    ```sh
+    ~~~sh
     10.19.3.23 - - [20/Apr/2022 13:23:29] "GET /redfish/v1/Systems/1 HTTP/1.1" 200 -
     10.19.3.23 - - [20/Apr/2022 13:23:29] "GET /redfish/v1/Managers/1 HTTP/1.1" 200 -
     10.19.3.23 - - [20/Apr/2022 13:23:29] "GET /redfish/v1/Managers/1/VirtualMedia HTTP/1.1" 200 -
@@ -167,5 +167,4 @@ In a successful execution you should see something like this in the logs:
 
     10.19.3.23 - - [20/Apr/2022 13:24:09] "POST /redfish/v1/Systems/1/Actions/ComputerSystem.Reset HTTP/1.1" 204 -
     10.19.3.23 - - [20/Apr/2022 13:24:10] "GET /redfish/v1/Systems/1 HTTP/1.1" 200 -
-
-    ```
+    ~~~

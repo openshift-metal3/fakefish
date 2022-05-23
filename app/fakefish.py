@@ -7,6 +7,7 @@ import os
 import requests
 import subprocess
 from datetime import datetime
+from werkzeug.http import parse_authorization_header
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -18,7 +19,7 @@ try:
 except ImportError:
     config = {'PORT': os.environ.get('PORT', 9000)}
 
-debug = config['DEBUG'] if 'DEBUG' in list(config) else True
+debug = bool(config['DEBUG']) if 'DEBUG' in list(config) else False
 port = int(config['PORT']) if 'PORT' in list(config) else 9000
 
 @app.route('/redfish/v1/')
@@ -35,6 +36,8 @@ def system_collection_resource():
 
 @app.route('/redfish/v1/Systems/1', methods=['GET', 'PATCH'])
 def system_resource():
+    username, password = get_credentials(flask.request)
+    global bmc_ip
     if flask.request.method == 'GET':
        return flask.render_template(
            'fake_system.json',
@@ -54,7 +57,8 @@ def system_resource():
            else:
                app.logger.info('Running script that sets boot from VirtualCD once')
                try:
-                   subprocess.check_call(['custom_scripts/bootfromcdonce.sh'])
+                   my_env = set_env_vars(bmc_ip, username, password)
+                   subprocess.check_call(['custom_scripts/bootfromcdonce.sh'], env=my_env)
                except subprocess.CalledProcessError as e:
                    return ('Failed to set boot from virtualcd once', 400)
 
@@ -74,19 +78,23 @@ def manager_resource():
 @app.route('/redfish/v1/Systems/1/Actions/ComputerSystem.Reset',
            methods=['POST'])
 def system_reset_action():
+    global bmc_ip
+    username, password = get_credentials(flask.request)
     reset_type = flask.request.json.get('ResetType')
     global power_state 
     if reset_type == 'On':
         app.logger.info('Running script that powers on the server')
         try:
-            subprocess.check_call(['custom_scripts/poweron.sh'])
+            my_env = set_env_vars(bmc_ip, username, password)
+            subprocess.check_call(['custom_scripts/poweron.sh'], env=my_env)
         except subprocess.CalledProcessError as e:
             return ('Failed to poweron the server', 400)
         power_state = 'On'
     else:
         app.logger.info('Running script that powers off the server')
         try:
-            subprocess.check_call(['custom_scripts/poweroff.sh'])
+            my_env = set_env_vars(bmc_ip, username, password)
+            subprocess.check_call(['custom_scripts/poweroff.sh'], env=my_env)
         except subprocess.CalledProcessError as e:
             return ('Failed to poweroff the server', 400)
         power_state = 'Off'
@@ -109,6 +117,8 @@ def virtualmedia_cd_resource():
 @app.route('/redfish/v1/Managers/1/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia',
           methods=['POST'])
 def virtualmedia_insert():
+    global bmc_ip
+    username, password = get_credentials(flask.request)
     image = flask.request.json.get('Image')
     if not image:
         return('POST only works for Image'), 400
@@ -119,7 +129,8 @@ def virtualmedia_insert():
         image_url = image
         app.logger.info('Running script that mounts cd with iso %s', image)
         try:
-            subprocess.check_call(['custom_scripts/mountcd.sh', image_url])
+            my_env = set_env_vars(bmc_ip, username, password)
+            subprocess.check_call(['custom_scripts/mountcd.sh', image_url], env=my_env)
         except subprocess.CalledProcessError as e:
             return ('Failed to mount virtualcd', 400)
         return '', 204
@@ -127,26 +138,53 @@ def virtualmedia_insert():
 @app.route('/redfish/v1/Managers/1/VirtualMedia/Cd/Actions/VirtualMedia.EjectMedia',
           methods=['POST'])
 def virtualmedia_eject():
+    global bmc_ip
     global inserted
     global image_url
+    username, password = get_credentials(flask.request)
     inserted = False
     image_url = ''
     app.logger.info('Running script that unmounts cd')
     try:
-        subprocess.check_call(['custom_scripts/unmountcd.sh'])
+        my_env = set_env_vars(bmc_ip, username, password)
+        subprocess.check_call(['custom_scripts/unmountcd.sh'], env=my_env)
     except subprocess.CalledProcessError as e:
         return ('Failed to unmount virtualcd', 400)
     return '', 204
 
 
+def get_credentials(flask_request):
+    auth = flask_request.headers.get('Authorization', None)
+    username = ''
+    password = ''
+    if auth is not None:
+        creds = parse_authorization_header(auth)
+        username = creds.username
+        password = creds.password
+    app.logger.debug('Returning credentials')
+    app.logger.debug('Username: ' + username + ', password: ' + password)
+    return username, password
+
+def set_env_vars(bmc_endpoint, username, password):
+    my_env = os.environ.copy()
+    my_env["BMC_ENDPOINT"] = bmc_endpoint
+    my_env["BMC_USERNAME"] = username
+    my_env["BMC_PASSWORD"] = password
+    return my_env
+
 def run():
     """
 
     """
-    app.run(host='0.0.0.0', port=port, debug=False, ssl_context='adhoc')
+    app.run(host='0.0.0.0', port=port, debug=debug, ssl_context='adhoc')
 
 
 if __name__ == '__main__':
+
+    bmc_ip = os.environ.get('BMC_IP', None)
+    if bmc_ip is None:
+        app.logger.error('Configure the BMC IP using the environment variable BMC_IP')
+        exit()
 
     inserted = False
     image_url = ''
