@@ -1,0 +1,23 @@
+FROM registry.fedoraproject.org/fedora:35
+MAINTAINER Mario Vazquez <mavazque@redhat.com>
+
+RUN echo -ne "[racadm]\nname=Racadm\nbaseurl=http://linux.dell.com/repo/hardware/dsu/os_dependent/RHEL8_64\nenabled=1\ngpgcheck=0" > /etc/yum.repos.d/racadm.repo
+
+RUN set -x && \
+    dnf -y update && \
+    dnf install -y python3 python3-flask python3-requests python3-pyOpenSSL openssl-devel srvadmin-idracadm7 && \
+    dnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
+
+RUN mkdir -p /opt/fakefish/
+
+COPY app/fakefish.py /opt/fakefish/fakefish.py
+
+ADD app/templates /opt/fakefish/templates
+ADD dell_scripts /opt/fakefish/custom_scripts
+
+WORKDIR /opt/fakefish/
+
+USER 1024
+
+ENTRYPOINT ["/usr/bin/python3", "-u", "/opt/fakefish/fakefish.py"] 
