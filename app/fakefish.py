@@ -6,21 +6,13 @@ import json
 import os
 import requests
 import subprocess
+import argparse
 from datetime import datetime
 from werkzeug.http import parse_authorization_header
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 app = flask.Flask(__name__)
-
-try:
-    app.config.from_object('settings')
-    config = app.config
-except ImportError:
-    config = {'PORT': os.environ.get('PORT', 9000)}
-
-debug = bool(config['DEBUG']) if 'DEBUG' in list(config) else False
-port = int(config['PORT']) if 'PORT' in list(config) else 9000
 
 @app.route('/redfish/v1/')
 def root_resource():
@@ -172,21 +164,41 @@ def set_env_vars(bmc_endpoint, username, password):
     my_env["BMC_PASSWORD"] = password
     return my_env
 
-def run():
+def run(port, debug, tls_mode, cert_file, key_file):
     """
 
     """
-    app.run(host='0.0.0.0', port=port, debug=debug, ssl_context='adhoc')
+    if tls_mode == 'adhoc':
+        app.run(host='::', port=port, debug=debug, ssl_context='adhoc')
+    elif tls_mode == 'disabled':
+        app.run(host='::', port=port, debug=debug)
+    else:
+        if os.path.exists(cert_file) and os.path.exists(key_file):
+            app.run(host='::', port=port, debug=debug, ssl_context=(cert_file, key_file))
+        else:
+            app.logger.error('%s or %s not found.', cert_file, key_file)
+            exit()
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='FakeFish, an experimental RedFish proxy that calls shell scripts for executing hardware actions.')
+    parser.add_argument('--tls-mode', type=str, choices=['adhoc', 'self-signed', 'disabled'], default='adhoc', help='Configures TLS mode. \
+                        \'self-signed\' mode expects users to configure a cert and a key files. (default: %(default)s)')
+    parser.add_argument('--cert-file', type=str, default='./cert.pem', help='Path to the certificate public key file. (default: %(default)s)')
+    parser.add_argument('--key-file', type=str, default='./cert.key', help='Path to the certificate private key file. (default: %(default)s)')
+    parser.add_argument('-r', '--remote-bmc', type=str, required=True, help='The BMC IP this FakeFish instance will connect to. e.g: 192.168.1.10')
+    parser.add_argument('-p','--listen-port', type=int, required=False, default=9000, help='The port where this FakeFish instance will listen for connections.')
+    parser.add_argument('--debug', action='store_true')
+    args = parser.parse_args()
 
-    bmc_ip = os.environ.get('BMC_IP', None)
-    if bmc_ip is None:
-        app.logger.error('Configure the BMC IP using the environment variable BMC_IP')
-        exit()
+    bmc_ip = args.remote_bmc
+    port = args.listen_port
+    debug = args.debug
+    tls_mode = args.tls_mode
+    cert_file = args.cert_file
+    key_file = args.key_file
 
     inserted = False
     image_url = ''
     power_state = 'On'
-    run()
+    run(port, debug, tls_mode, cert_file, key_file)
