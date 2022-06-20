@@ -9,12 +9,15 @@ RUN set -x && \
 
 RUN mkdir -p /opt/fakefish/
 
-COPY app/fakefish.py /opt/fakefish/fakefish.py
+# The stars in the command below will only copy those files if they exist
+COPY app/fakefish.py app/cert.pem* app/cert.key* /opt/fakefish/
 
 ADD app/templates /opt/fakefish/templates
 ADD dell_scripts /opt/fakefish/custom_scripts
 
 WORKDIR /opt/fakefish/
+
+RUN chown -R 1024 /opt/fakefish/
 
 USER 1024
 
