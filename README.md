@@ -31,6 +31,8 @@ A [Containerfile](./custom_scripts/Containerfile) is included, so users can buil
 
     > **NOTE**: Check the Makefile vars to customize the output container image naming and tag.
 
+    > **NOTE2**: If you plan to run self-signed TLS certs, add them to the app/ folder before running the make command and make sure the cert names are properly configured in the Containerfile.
+
     ~~~sh
     make build-custom
     ~~~
@@ -39,14 +41,25 @@ A [Containerfile](./custom_scripts/Containerfile) is included, so users can buil
 
 You need a FakeFish process for each server you plan to install. Think of FakeFish like if it was a custom implementation of a BMC for that specific server.
 
-Since you will be potentially running multiple FakeFish instances, you will make use of an environment variable to configure in which port a given FakeFish instance listens on and another one to configure which BMC IP it provides service to. On top of that, you can do a bind mount for the folder containing the scripts for managing that specific server or use the scripts inside the container image.
+Currently, FakeFish exposes the following arguments:
+
+|Argument|What is it used for|Default|Required|
+|--------|-------------------|-------|--------|
+|`--tls-mode`|Configures TLS for FakeFish, three available modes: `adhoc` (FakeFish generated certs), `self-signed` (user provided certs), `disabled` (TLS disabled).|`adhoc`|No|
+|`--cert-file`|Configures the certificate public key that will be used in `self-signed` tls mode.|`./cert.pem`|No|
+|`--key-file`|Configures the certificate private key that will be used in `self-signed` tls mode.|`./cert.key`|No|
+|`--remote-bmc` or `-r`|Defines the BMC IP a FakeFish instance will connect to.|`None`|Yes|
+|`--listen-port` or `-p`|Defines the port a FakeFish instance will listen on.|`9000`|No|
+|`--debug` or `-d`|Starts a FakeFish instance in debug mode.|`False`|No|
+
+Since you will be potentially running multiple FakeFish instances, you will make use of the `--listen-port` argument to configure in which port a given FakeFish instance listens on and `--remote-bmc` to configure which BMC IP it provides service to. On top of that, you can do a bind mount for the folder containing the scripts for managing that specific server or use the scripts inside the container image.
 
 An example can be found below:
 
 > **NOTE**: Every container is mapped to a single BMC, but if more hosts are required, different ports can be used (9001, 9002,...)
 
 ~~~sh
-podman run -p 9000:9000 -e PORT=9000 -e BMC_IP=172.20.10.10 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:v0
+podman run -p 9000:9000 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:latest --listen-port 9000 --remote-bmc 172.20.10.10
 
 sudo firewall-cmd --add-port=9000/tcp
 ~~~
@@ -64,7 +77,7 @@ In a successful execution you should see something like this in the logs:
 - Starting FakeFish
 
     ~~~sh
-    $ podman run -p 9000:9000 -e PORT=9000 -e BMC_IP=172.20.10.10 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:v0
+    $ podman run -p 9000:9000 -v $PWD/dell_scripts:/opt/fakefish/custom_scripts:z quay.io/mavazque/fakefish:latest --listen-port 9000 --remote-bmc 172.20.10.10
 
      * Serving Flask app 'fakefish' (lazy loading)
      * Environment: production
