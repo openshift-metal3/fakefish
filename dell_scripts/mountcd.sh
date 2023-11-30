@@ -16,7 +16,7 @@ ISO=${1}
 # Connect image
 /opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} remoteimage -c -l ${ISO}
 
-if ! /opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} remoteimage -s | grep ${ISO}; then
+if ! /opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} remoteimage -s | grep -F ${ISO}; then
   exit 1
 fi
 
