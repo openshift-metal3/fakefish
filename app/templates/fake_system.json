@@ -21,52 +21,15 @@
         "BootSourceOverrideMode": "UEFI",
         "UefiTargetBootSourceOverride": "/0x31/0x33/0x01/0x01"
     },
-    "ProcessorSummary": {
-        "Count": 8,
-        "Status": {
-            "State": "Enabled",
-            "Health": "OK",
-            "HealthRollUp": "OK"
-        }
-    },
-    "MemorySummary": {
-        "TotalSystemMemoryGiB": 15,
-        "Status": {
-            "State": "Enabled",
-            "Health": "OK",
-            "HealthRollUp": "OK"
-        }
-    },
-    "Bios": {
-        "@odata.id": "/redfish/v1/Systems/1/BIOS"
-    },
-    "Processors": {
-        "@odata.id": "/redfish/v1/Systems/1/Processors"
-    },
-    "Memory": {
-        "@odata.id": "/redfish/v1/Systems/1/Memory"
-    },
     "EthernetInterfaces": {
         "@odata.id": "/redfish/v1/Systems/1/EthernetInterfaces"
     },
-    "SimpleStorage": {
-        "@odata.id": "/redfish/v1/Systems/1/SimpleStorage"
-    },
-    "Storage": {
-        "@odata.id": "/redfish/v1/Systems/1/Storage"
-    },
-    "IndicatorLED": "Lit",
     "Links": {
-        "Chassis": [
-            {
-                "@odata.id": "/redfish/v1/Chassis/fake-chassis"
-            }
-            ],
         "ManagedBy": [
             {
                 "@odata.id": "/redfish/v1/Managers/1"
             }
-            ]
+        ]
     },
     "Actions": {
         "#ComputerSystem.Reset": {
