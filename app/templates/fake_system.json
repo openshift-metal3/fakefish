@@ -40,6 +40,7 @@
     "Bios": {
         "@odata.id": "/redfish/v1/Systems/1/BIOS"
     },
+    "BiosVersion": "1.0.0",
     "Processors": {
         "@odata.id": "/redfish/v1/Systems/1/Processors"
     },
