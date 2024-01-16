@@ -1,0 +1,26 @@
+FROM registry.fedoraproject.org/fedora:38
+MAINTAINER Mario Vazquez <mavazque@redhat.com>
+
+RUN set -x && \
+    dnf -y update && \
+    dnf install -y openssl python3 python3-flask python3-requests python3-pyOpenSSL && \
+    dnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf && \
+    curl -Ls https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/oc.tar.gz && \
+    tar xfz /tmp/oc.tar.gz oc && mv oc /usr/bin/oc && chmod +x /usr/bin/oc && \ 
+    curl -Ls https://github.com/kubevirt/kubevirt/releases/download/v1.1.1/virtctl-v1.1.1-linux-amd64 -o /usr/bin/virtctl && chmod +x /usr/bin/virtctl && \
+    mkdir -p /opt/fakefish/
+
+# The stars in the command below will only copy those files if they exist
+COPY app/fakefish.py app/cert.pem* app/cert.key* /opt/fakefish/
+
+ADD app/templates /opt/fakefish/templates
+ADD kubevirt_scripts /opt/fakefish/custom_scripts
+
+WORKDIR /opt/fakefish/
+
+RUN chown -R 1024 /opt/fakefish/
+
+USER 1024
+
+ENTRYPOINT ["/usr/bin/python3", "-u", "/opt/fakefish/fakefish.py"] 
