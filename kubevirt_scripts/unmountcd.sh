@@ -13,7 +13,13 @@ set -ux -o pipefail
 export VM_NAME=$(echo $BMC_ENDPOINT | awk -F "_" '{print $1}')
 export VM_NAMESPACE=$(echo $BMC_ENDPOINT | awk -F "_" '{print $2}')
 
-export KUBECONFIG=/var/tmp/kubeconfig
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+source ${SCRIPTPATH}/common.sh
+
+if [[ -r /var/tmp/kubeconfig ]]; then
+  export KUBECONFIG=/var/tmp/kubeconfig
+fi
 
 # we cannot unmount the disk if it's running
 VM_RUNNING=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.running}')
@@ -22,11 +28,9 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# If VM is running, power it off
 if [[ "${VM_RUNNING}" == "true" ]]; then
-  # Even if we don't unmount the ISO the VM
-  # will boot from HD next time (providing there is an S.O installed)
-  echo "VM is running, ignoring unmount"
-  exit 0
+  stop_vm
 fi
 
 NUM_DISK=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.template.spec.domain.devices.disks[*].name}' | tr " " ";" | { grep -o ";" || true; } | wc -l)
@@ -44,12 +48,10 @@ cat <<EOF > /tmp/${VM_NAME}.patch
 ]
 EOF
 
-# If NUM_DISK is <=1 means that mount didn't happen
-if [[ ${NUM_DISK} -gt 1 ]]; then
+# If NUM_DISK is >=1 means that mount happened
+if [[ ${NUM_DISK} -ge 1 ]]; then
   oc -n ${VM_NAMESPACE} patch vm ${VM_NAME} --patch-file /tmp/${VM_NAME}.patch --type json
-  if [ $? -eq 0 ]; then
-    exit 0
-  else
+  if [ $? -ne 0 ]; then
     echo "Failed to remove ISO disk from VM"
     exit 1
   fi
@@ -70,8 +72,8 @@ cat <<EOF > /tmp/${VM_NAME}.patch
 ]
 EOF
 
-# If NUM_VOLUMES is <=1 means that mount didn't happen
-if [[ ${NUM_VOLUMES} -gt 1 ]]; then
+# If NUM_VOLUMES is >=1 means that mount happened
+if [[ ${NUM_VOLUMES} -ge 1 ]]; then
   oc -n ${VM_NAMESPACE} patch vm ${VM_NAME} --patch-file /tmp/${VM_NAME}.patch --type json
   if [ $? -eq 0 ]; then
     oc -n ${VM_NAMESPACE} delete configmap ${VM_NAME}-iso-ca &> /dev/null
@@ -84,4 +86,9 @@ if [[ ${NUM_VOLUMES} -gt 1 ]]; then
     echo "Failed to remove iso volume from VM"
     exit 1
   fi
+fi
+
+# If VM was running, power it on
+if [[ "${VM_RUNNING}" == "true" ]]; then
+  start_vm
 fi

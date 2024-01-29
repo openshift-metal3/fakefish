@@ -1,10 +1,10 @@
-FROM registry.fedoraproject.org/fedora:38
+FROM registry.fedoraproject.org/fedora-minimal:38
 MAINTAINER Mario Vazquez <mavazque@redhat.com>
 
 RUN set -x && \
-    dnf -y update && \
-    dnf install -y openssl python3 python3-flask python3-requests python3-pyOpenSSL && \
-    dnf clean all && \
+    microdnf -y update && \
+    microdnf install -y tar gzip openssl python3 python3-flask python3-requests python3-pyOpenSSL && \
+    microdnf clean all && \
     rm -rf /var/cache/yum /var/cache/dnf && \
     curl -Ls https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/oc.tar.gz && \
     tar xfz /tmp/oc.tar.gz oc && mv oc /usr/bin/oc && chmod +x /usr/bin/oc && \ 
