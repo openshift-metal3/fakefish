@@ -11,20 +11,18 @@ set -ux -o pipefail
 export VM_NAME=$(echo $BMC_ENDPOINT | awk -F "_" '{print $1}')
 export VM_NAMESPACE=$(echo $BMC_ENDPOINT | awk -F "_" '{print $2}')
 
-export KUBECONFIG=/var/tmp/kubeconfig
-VM_RUNNING=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.running}')
-if [ $? -ne 0 ]; then
-  echo "Failed to get VM power state."
-  exit 1
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+source ${SCRIPTPATH}/common.sh
+
+if [[ -r /var/tmp/kubeconfig ]]; then
+  export KUBECONFIG=/var/tmp/kubeconfig
 fi
-if [[ "${VM_RUNNING}" == "false" ]]; then
-  echo "VM is already powered off"
+
+stop_vm
+if [ $? -eq 0 ]; then
+  exit 0
 else
-  virtctl -n ${VM_NAMESPACE} stop ${VM_NAME}
-  if [ $? -eq 0 ]; then
-    exit 0
-  else
-    echo "Failed to poweroff VM"
-    exit 1
-  fi
+  echo "Failed to poweroff VM"
+  exit 1
 fi

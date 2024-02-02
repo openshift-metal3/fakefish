@@ -10,8 +10,29 @@ set -ux -o pipefail
 #### BMC_PASSWORD - Has the password configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 
 ISO=${1}
-CLUSTER_STORAGE_CLASS=ocs-storagecluster-ceph-rbd
 IS_HTTPS=false
+
+export VM_NAME=$(echo $BMC_ENDPOINT | awk -F "_" '{print $1}')
+export VM_NAMESPACE=$(echo $BMC_ENDPOINT | awk -F "_" '{print $2}')
+
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+source ${SCRIPTPATH}/common.sh
+
+if [[ -r /var/tmp/kubeconfig ]]; then
+  export KUBECONFIG=/var/tmp/kubeconfig
+fi
+
+
+CLUSTER_STORAGE_CLASS=$(oc get storageclass | awk '/(default)/ {print $1}')
+if [ $? -ne 0 ]; then
+  echo "Failed to get default cluster's storage class."
+  exit 1
+fi
+
+if [ -z ${CLUSTER_STORAGE_CLASS} ];then
+  CLUSTER_STORAGE_CLASS=ocs-storagecluster-ceph-rbd
+fi
 
 PVC_SPEC=$(cat <<EOF
   spec:
@@ -38,25 +59,16 @@ if echo ${ISO} | grep -q https://; then
   IS_HTTPS=true
 fi
 
-export VM_NAME=$(echo $BMC_ENDPOINT | awk -F "_" '{print $1}')
-export VM_NAMESPACE=$(echo $BMC_ENDPOINT | awk -F "_" '{print $2}')
-
-export KUBECONFIG=/var/tmp/kubeconfig
-
 # we need to poweroff the VM if it's running
-VM_RUNNING=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.running}')
+VM_WAS_RUNNING=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.running}')
 if [ $? -ne 0 ]; then
   echo "Failed to get VM power state."
   exit 1
 fi
-VM_WAS_RUNNING=false
-if [[ "${VM_RUNNING}" == "true" ]]; then
-  VM_WAS_RUNNING="true"
-  virtctl -n ${VM_NAMESPACE} stop ${VM_NAME}
-  if [ $? -ne 0 ]; then
-    echo "Failed to stop VM."
-    exit 1
-  fi
+stop_vm
+if [ $? -ne 0 ]; then
+  echo "Failed to poweroff VM."
+  exit 1
 fi
 
 if [ ${IS_HTTPS} == "true" ]; then
@@ -150,7 +162,7 @@ cat <<EOF > /tmp/${VM_NAME}.patch
 EOF
 
 # Add it to VM object if it doesn't exist
-VOLUME_EXIST=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.template.spec.volumes[*].name}' | grep -c "${VM_NAME}-bootiso")
+VOLUME_EXIST=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.template.spec.volumes[*].name}' | { grep -c "${VM_NAME}-bootiso" || true; })
 if [ $? -ne 0 ]; then
   echo "Failed to get VM volumes."
   exit 1
@@ -192,7 +204,7 @@ cat <<EOF > /tmp/${VM_NAME}.patch
 EOF
 
 # Add it to VM object if it doesn't exist
-DISK_EXIST=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.template.spec.domain.devices.disks[*].name}' | grep -c "${VM_NAME}-bootiso")
+DISK_EXIST=$(oc -n ${VM_NAMESPACE} get vm ${VM_NAME} -o jsonpath='{.spec.template.spec.domain.devices.disks[*].name}' | { grep -c "${VM_NAME}-bootiso" || true; })
 if [ $? -ne 0 ]; then
   echo "Failed to get VM volumes."
   exit 1
@@ -212,9 +224,9 @@ fi
 
 # If VM was running, restore it
 if [[ "${VM_WAS_RUNNING}" == "true" ]]; then
-  virtctl -n ${VM_NAMESPACE} start ${VM_NAME}
+  start_vm
   if [ $? -ne 0 ]; then
     echo "Failed to poweron VM."
-  exit 1
+    exit 1
   fi
 fi
