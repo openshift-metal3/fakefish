@@ -1,5 +1,5 @@
-FROM registry.fedoraproject.org/fedora:35
-MAINTAINER Mario Vazquez <mavazque@redhat.com>
+FROM registry.fedoraproject.org/fedora:latest
+MAINTAINER Lazhar Halleb <mavazque@redhat.com>
 
 RUN set -x && \
     dnf -y update && \
