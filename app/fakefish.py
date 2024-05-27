@@ -7,8 +7,8 @@ import os
 import requests
 import subprocess
 import argparse
+import base64
 from datetime import datetime
-from werkzeug.http import parse_authorization_header
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -151,10 +151,10 @@ def get_credentials(flask_request):
     auth = flask_request.headers.get('Authorization', None)
     username = ''
     password = ''
-    if auth is not None:
-        creds = parse_authorization_header(auth)
-        username = creds.username
-        password = creds.password
+    if auth is not None and auth.startswith('Basic '):
+        encoded_creds = auth.split(' ', 1)[1]
+        decoded_creds = base64.b64decode(encoded_creds).decode('utf-8')
+        username, password = decoded_creds.split(':', 1)
     app.logger.debug('Returning credentials')
     app.logger.debug('Username: ' + username + ', password: ' + password)
     return username, password
