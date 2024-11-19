@@ -8,6 +8,8 @@
 #### BMC_PASSWORD - Has the password configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+VM_SHUTDOWN_FILE="/tmp/shutdown"
+
 source ${SCRIPTPATH}/common.sh
 
 #Get VM Status
@@ -22,12 +24,15 @@ fi
 #Check if VM is already powered off
 if [ "${vm_status}" == "shut" ]; then
     echo "VM ${VM_NAME} is already powered off"
+    rm -f ${VM_SHUTDOWN_FILE}
     exit 0
 fi
 
 #Power off VM
 power_off_vm
 if [ $? -eq 0 ]; then
+    #Write temp status file
+    touch ${VM_SHUTDOWN_FILE}
     exit 0
 else
     echo "Failed to poweroff VM"
