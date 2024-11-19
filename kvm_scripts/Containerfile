@@ -1,0 +1,28 @@
+FROM registry.fedoraproject.org/fedora:35
+MAINTAINER Mario Vazquez <mavazque@redhat.com>
+
+RUN set -x && \
+    dnf -y update && \
+    dnf install -y python3 python3-flask python3-requests python3-pyOpenSSL libvirt-client virt-install openssh-clients && \
+    dnf clean all && \
+    rm -rf /var/cache/yum /var/cache/dnf
+
+RUN mkdir -p /opt/fakefish/
+
+# The stars in the command below will only copy those files if they exist
+COPY app/fakefish.py app/cert.pem* app/cert.key* /opt/fakefish/
+
+ADD app/templates /opt/fakefish/templates
+ADD kvm_scripts /opt/fakefish/custom_scripts
+
+WORKDIR /opt/fakefish/
+
+RUN mkdir /opt/fakefish/.ssh && \
+    echo "IdentityFile /opt/fakefish/.ssh/id_rsa" >> /opt/fakefish/.ssh/config && \
+    echo "PubKeyAuthentication yes" >> /opt/fakefish/.ssh/config && \
+    echo "StrictHostKeyChecking no" >> /opt/fakefish/.ssh/config && \
+    chown -R 1000 /opt/fakefish/
+
+USER 1000
+
+ENTRYPOINT ["/usr/bin/python3", "-u", "/opt/fakefish/fakefish.py"] 

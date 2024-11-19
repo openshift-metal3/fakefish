@@ -160,10 +160,16 @@ def get_credentials(flask_request):
     return username, password
 
 def set_env_vars(bmc_endpoint, username, password):
+    global vm_name
     my_env = os.environ.copy()
     my_env["BMC_ENDPOINT"] = bmc_endpoint
     my_env["BMC_USERNAME"] = username
     my_env["BMC_PASSWORD"] = password
+    try:
+        my_env["VM_NAME"] = vm_name
+    except:
+        pass
+    
     return my_env
 
 def run(port, debug, tls_mode, cert_file, key_file):
@@ -190,6 +196,7 @@ if __name__ == '__main__':
     parser.add_argument('--key-file', type=str, default='./cert.key', help='Path to the certificate private key file. (default: %(default)s)')
     parser.add_argument('-r', '--remote-bmc', type=str, required=True, help='The BMC IP this FakeFish instance will connect to. e.g: 192.168.1.10')
     parser.add_argument('-p','--listen-port', type=int, required=False, default=9000, help='The port where this FakeFish instance will listen for connections.')
+    parser.add_argument('--vm-name', type=str, required=False, help='For KVM Scripts this is the VM domain name in virsh.')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
 
@@ -199,6 +206,7 @@ if __name__ == '__main__':
     tls_mode = args.tls_mode
     cert_file = args.cert_file
     key_file = args.key_file
+    vm_name = args.vm_name
 
     inserted = False
     image_url = ''
