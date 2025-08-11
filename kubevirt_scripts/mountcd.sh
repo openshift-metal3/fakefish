@@ -31,19 +31,9 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ -z ${CLUSTER_STORAGE_CLASS} ];then
-  CLUSTER_STORAGE_CLASS=ocs-storagecluster-ceph-rbd
+  CLUSTER_STORAGE_CLASS=ocs-storagecluster-ceph-rbd-virtualization
 fi
 
-PVC_SPEC=$(cat <<EOF
-  spec:
-    accessModes:
-    - ReadWriteOnce
-    resources:
-      requests:
-        storage: 5Gi
-    storageClassName: ${CLUSTER_STORAGE_CLASS}
-EOF
-)
 
 if echo ${ISO} | grep -q https://; then
   HOSTNAME=$(echo ${ISO} | awk -F "https://" '{print $2}' | awk -F "/" '{print $1}' | awk -F ":" '{print $1}')
@@ -71,50 +61,73 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-if [ ${IS_HTTPS} == "true" ]; then
-  # We don't care about delete configmap return
-  # if it fails it's likely because it didn't exist
-  # we will fail on create if something is wrong with it
-  oc -n ${VM_NAMESPACE} delete configmap ${VM_NAME}-iso-ca &> /dev/null
-  oc -n ${VM_NAMESPACE} create configmap ${VM_NAME}-iso-ca --from-file=ca.crt=/tmp/iso-endpoint-ca.crt
-  if [ $? -ne 0 ]; then
-    echo "Failed to create configmap with https server cert."
-    exit 1
-  fi
 
-  cat <<EOF | oc apply -f -
+# Remove existing PVC if it exists
+oc -n ${VM_NAMESPACE} get pvc ${VM_NAME}-bootiso \
+  && {
+      oc -n ${VM_NAMESPACE} delete pvc ${VM_NAME}-bootiso \
+        || {
+            echo "Failed to delete existing PVC ${VM_NAME}-bootiso"
+            exit 1
+        }
+    }
+
+# Remove existing populator if it exists
+oc -n ${VM_NAMESPACE} get volumeimportsource ${VM_NAME}-bootiso-populator \
+  && {
+      oc -n ${VM_NAMESPACE} delete volumeimportsource ${VM_NAME}-bootiso-populator \
+        || {
+            echo "Failed to delete existing VolumeImportSource ${VM_NAME}-bootiso-populator"
+            exit 1
+        }
+    }
+
+
+# Create the populator
+cat <<EOF | oc apply -f -
+  apiVersion: cdi.kubevirt.io/v1beta1
+  kind: VolumeImportSource
+  metadata:
+    name: ${VM_NAME}-bootiso-populator
+    namespace: ${VM_NAMESPACE}
+  spec:
+    source:
+      http:
+        url: "${ISO}"
+EOF
+
+# Check if the populator was created
+if [ $? -ne 0 ]; then
+  echo "Failed to create the populator."
+  exit 1
+fi
+
+
+cat <<EOF | oc apply -f -
   apiVersion: v1
   kind: PersistentVolumeClaim
   metadata:
-    annotations:
-      cdi.kubevirt.io/storage.import.certConfigMap: "${VM_NAME}-iso-ca"
-      cdi.kubevirt.io/storage.import.endpoint: "${ISO}"
-      cdi.kubevirt.io/storage.bind.immediate.requested: "true"
     name: ${VM_NAME}-bootiso
     namespace: ${VM_NAMESPACE}
-${PVC_SPEC}
+  spec:
+    dataSourceRef:
+      apiGroup: cdi.kubevirt.io
+      kind: VolumeImportSource
+      name: ${VM_NAME}-bootiso-populator
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 5Gi
+    storageClassName: ${CLUSTER_STORAGE_CLASS}
 EOF
-  if [ $? -ne 0 ]; then
-    echo "Failed to create PVC."
-    exit 1
-  fi
-else
-  cat <<EOF | oc apply -f -
-  apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
-    annotations:
-      cdi.kubevirt.io/storage.import.endpoint: "${ISO}"
-      cdi.kubevirt.io/storage.bind.immediate.requested: "true"
-    name: ${VM_NAME}-bootiso
-    namespace:  ${VM_NAMESPACE}
-${PVC_SPEC}
-EOF
-  if [ $? -ne 0 ]; then
-    echo "Failed to create PVC."
-    exit 1
-  fi
+
+# Check if the pvc was created
+if [ $? -ne 0 ]; then
+  echo "Failed to create PVC."
+  exit 1
 fi
+
 
 STATUS=$(oc -n ${VM_NAMESPACE} get pvc ${VM_NAME}-bootiso -o jsonpath='{.metadata.annotations.cdi\.kubevirt\.io/storage\.condition\.running\.message}')
 if [ $? -ne 0 ]; then

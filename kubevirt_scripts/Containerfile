@@ -1,5 +1,5 @@
 FROM registry.fedoraproject.org/fedora-minimal:40
-MAINTAINER Mario Vazquez <mavazque@redhat.com>
+MAINTAINER https://github.com/openshift-metal3/fakefish
 
 RUN set -x && \
     microdnf -y update && \
