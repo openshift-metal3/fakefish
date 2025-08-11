@@ -76,7 +76,6 @@ EOF
 if [[ ${NUM_VOLUMES} -ge 1 ]]; then
   oc -n ${VM_NAMESPACE} patch vm ${VM_NAME} --patch-file /tmp/${VM_NAME}.patch --type json
   if [ $? -eq 0 ]; then
-    #oc -n ${VM_NAMESPACE} delete configmap ${VM_NAME}-iso-ca &> /dev/null
     oc -n ${VM_NAMESPACE} delete volumeimportsource ${VM_NAME}-bootiso-populator
     oc -n ${VM_NAMESPACE} delete pvc ${VM_NAME}-bootiso
     if [ $? -ne 0 ]; then
