@@ -1,25 +1,31 @@
-FROM registry.fedoraproject.org/fedora-minimal:40
+FROM registry.fedoraproject.org/fedora-minimal:42
 MAINTAINER Mario Vazquez <mavazque@redhat.com>
 
-RUN set -x && \
-    microdnf -y update && \
-    microdnf install -y tar gzip openssl python3 python3-flask python3-requests python3-pyOpenSSL && \
-    microdnf clean all && \
-    rm -rf /var/cache/yum /var/cache/dnf && \
-    curl -Ls https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/oc.tar.gz && \
-    tar xfz /tmp/oc.tar.gz oc && mv oc /usr/bin/oc && chmod +x /usr/bin/oc && \ 
-    curl -Ls https://github.com/kubevirt/kubevirt/releases/download/v1.1.1/virtctl-v1.1.1-linux-amd64 -o /usr/bin/virtctl && chmod +x /usr/bin/virtctl && \
-    mkdir -p /opt/fakefish/
+RUN set -x \
+    && microdnf -y update \
+    && microdnf install -y \
+    gzip \
+    jq \
+    openssl \
+    python3 \
+    python3-flask \
+    python3-pyOpenSSL \
+    python3-requests \
+    tar \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum /var/cache/dnf \
+    && curl -Ls https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz | \
+    tar xfz - oc && mv oc /usr/bin/oc \
+    && curl -Ls https://github.com/kubevirt/kubevirt/releases/download/v1.6.2/virtctl-v1.6.2-linux-amd64 -o /usr/bin/virtctl && chmod +x /usr/bin/virtctl \
+    && mkdir -p /opt/fakefish/
 
 # The stars in the command below will only copy those files if they exist
-COPY app/fakefish.py app/cert.pem* app/cert.key* /opt/fakefish/
+COPY --chown=1024 app/fakefish.py app/cert.pem* app/cert.key* /opt/fakefish/
 
-ADD app/templates /opt/fakefish/templates
-ADD kubevirt_scripts /opt/fakefish/custom_scripts
+ADD --chown=1024 app/templates /opt/fakefish/templates
+ADD --chown=1024 kubevirt_scripts /opt/fakefish/custom_scripts
 
 WORKDIR /opt/fakefish/
-
-RUN chown -R 1024 /opt/fakefish/
 
 USER 1024
 
