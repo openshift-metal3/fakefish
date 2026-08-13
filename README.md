@@ -51,6 +51,7 @@ Currently, FakeFish exposes the following arguments:
 |`--remote-bmc` or `-r`|Defines the BMC IP a FakeFish instance will connect to.|`None`|Yes|
 |`--listen-port` or `-p`|Defines the port a FakeFish instance will listen on.|`9000`|No|
 |`--debug` or `-d`|Starts a FakeFish instance in debug mode.|`False`|No|
+|`--validate-credentials`|Path to a file containing `username:password`. When set, FakeFish validates incoming Basic Auth credentials before processing any request. See [Security Considerations](#security-considerations).|`None`|No|
 
 Since you will be potentially running multiple FakeFish instances, you will make use of the `--listen-port` argument to configure in which port a given FakeFish instance listens on and `--remote-bmc` to configure which BMC IP it provides service to. On top of that, you can do a bind mount for the folder containing the scripts for managing that specific server or use the scripts inside the container image.
 
@@ -69,6 +70,23 @@ Then, in the `install-config.yaml` file, it is required to specify the IP where 
 ~~~yaml
 bmcAddress: redfish-virtualmedia://192.168.1.10:9000/redfish/v1/Systems/1
 ~~~
+
+## Security Considerations
+
+FakeFish does not implement its own authentication layer by default. It relies on the backend scripts to handle credential validation. This design works for backends that forward credentials to a real BMC (e.g. Dell iDRAC, HPE iLO, Supermicro), since the BMC itself validates the credentials.
+
+However, backends that do **not** validate credentials — such as KubeVirt, which authenticates to the Kubernetes API via a mounted KUBECONFIG file and completely ignores the BMC username/password — are exposed to unauthorized access. Without additional configuration, **any user** with network access to the FakeFish endpoint can control the VMs (power on/off, mount CD images) regardless of what credentials they provide, or even without credentials at all.
+
+### Using `--validate-credentials`
+
+For backends without their own credential validation (e.g. KubeVirt), you **must** use the `--validate-credentials` flag to enforce authentication at the FakeFish layer:
+
+1. Create a file containing `username:password` on a single line.
+2. Pass the file path to FakeFish via `--validate-credentials /path/to/credentials`.
+
+FakeFish will then require valid HTTP Basic Auth credentials matching the file contents before processing any request.
+
+> **WARNING**: Be careful when using `--validate-credentials` with backends that forward credentials to a real BMC (Dell, HPE, Supermicro). Since FakeFish validates credentials before forwarding them, the stored credentials must match what the BMC expects — and the BMC already handles authentication itself. Using this flag with such backends adds complexity without security benefit and may cause authentication issues.
 
 ## Logs
 

@@ -28,7 +28,17 @@ We will run three FakeFish instances for our three KubeVirt VMs, our VMs are cre
     oc -n fakefish create secret generic kubevirt-cluster-kubeconfig --from-file=kubeconfig=/path/to/my/kubeconfig
     ~~~
 
-3. We can now create the deployments, services, and routes for our FakeFish instances:
+3. We create a secret with the credentials that FakeFish will use to validate incoming requests. The credentials file must contain a single line in the format `username:password`.
+
+    > **NOTE**: Since KubeVirt backends rely on a KUBECONFIG file and do not validate BMC credentials, FakeFish must be configured with `--validate-credentials` to enforce authentication. Without it, anyone with access to the FakeFish endpoint can control the VMs.
+
+    ~~~sh
+    echo -n "admin:s3cur3p4ss" > /tmp/fakefish-credentials
+    oc -n fakefish create secret generic fakefish-credentials --from-file=credentials=/tmp/fakefish-credentials
+    rm /tmp/fakefish-credentials
+    ~~~
+
+4. We can now create the deployments, services, and routes for our FakeFish instances:
 
     > **IMPORTANT**: If you're using the scripts provided in the `kubevirt_scripts` folder, you must name the BMCs like `vm-name_vm-namespace`.
 
@@ -60,6 +70,9 @@ We will run three FakeFish instances for our three KubeVirt VMs, our VMs are cre
               - name: kubevirt-kubeconfig
                 secret:
                   secretName: kubevirt-cluster-kubeconfig
+              - name: fakefish-credentials
+                secret:
+                  secretName: fakefish-credentials
               containers:
               - image: ${FAKEFISH_IMAGE}
                 imagePullPolicy: Always
@@ -70,10 +83,16 @@ We will run three FakeFish instances for our three KubeVirt VMs, our VMs are cre
                 - "${bmc}"
                 - "--tls-mode"
                 - "disabled"
+                - "--validate-credentials"
+                - "/var/tmp/credentials/credentials"
                 volumeMounts:
                 - name: kubevirt-kubeconfig
                   readOnly: true
-                  mountPath: /var/tmp/
+                  mountPath: /var/tmp/kubeconfig
+                  subPath: kubeconfig
+                - name: fakefish-credentials
+                  readOnly: true
+                  mountPath: /var/tmp/credentials/
     EOF
         cat <<EOF | oc apply -f -
         apiVersion: v1
@@ -112,7 +131,7 @@ We will run three FakeFish instances for our three KubeVirt VMs, our VMs are cre
     done
     ~~~
 
-4. At this point we should have something like this:
+5. At this point we should have something like this:
 
     ~~~sh
     $ oc -n fakefish get deployment,svc,route
@@ -133,10 +152,10 @@ We will run three FakeFish instances for our three KubeVirt VMs, our VMs are cre
     route.route.openshift.io/fakefish-cp-node2-virtual-cp   fakefish-cp-node2-virtual-cp-fakefish.apps.example.com          fakefish-cp-node2-virtual-cp   http   edge          None
     ~~~
 
-5. And if we access one of the routes we can see that FakeFish will reply:
+6. And if we access one of the routes we can see that FakeFish will reply:
 
     ~~~sh
-    $ curl -k https://fakefish-cp-node0-virtual-cp-fakefish.apps.example.com/redfish/v1/
+    $ curl -k -u admin:s3cur3p4ss https://fakefish-cp-node0-virtual-cp-fakefish.apps.example.com/redfish/v1/
 
     {
         "@odata.type": "#ServiceRoot.v1_5_0.ServiceRoot",
@@ -155,7 +174,9 @@ We will run three FakeFish instances for our three KubeVirt VMs, our VMs are cre
     }
     ~~~
 
-6. Now we just need to configure our install-config or baremetalhost to use this route as the RedFish endpoint like this:
+7. Now we just need to configure our install-config or baremetalhost to use this route as the RedFish endpoint like this:
+
+    > **IMPORTANT**: The credentials referenced by `credentialsName` in the BareMetalHost must match the ones stored in the `--validate-credentials` file configured in the FakeFish deployment.
 
     ~~~yaml
     apiVersion: metal3.io/v1alpha1
