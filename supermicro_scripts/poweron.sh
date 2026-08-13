@@ -7,7 +7,7 @@
 #### BMC_USERNAME - Has the username configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 #### BMC_PASSWORD - Has the password configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 
-curl -X POST -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' https://${BMC_ENDPOINT}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset -d '{"ResetType":"ForceOn"}'
+curl -X POST -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' "https://${BMC_ENDPOINT}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset" -d '{"ResetType":"ForceOn"}'
 if [ $? -eq 0 ]; then
   exit 0
 else

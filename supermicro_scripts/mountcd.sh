@@ -8,28 +8,28 @@
 #### BMC_USERNAME - Has the username configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 #### BMC_PASSWORD - Has the password configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 
-ISO=${1}
-ISO_URL=$(echo $ISO| cut -d '/' -f-3)
-ISO_PATH='/'$(echo $ISO| cut -d '/' -f4-)
+ISO="${1}"
+ISO_URL=$(echo "${ISO}" | cut -d '/' -f-3)
+ISO_PATH='/'$(echo "${ISO}" | cut -d '/' -f4-)
 
 # UnMount image just in case
-curl -X POST -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CfgCD/Actions/IsoConfig.UnMount -d ""
+curl -X POST -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' "https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CfgCD/Actions/IsoConfig.UnMount" -d ""
 
 # Configure image
 sleep 2
 echo
-curl -X PATCH -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CfgCD --data '{"Host": "'${ISO_URL}'","Path": "'${ISO_PATH}'"}'
+curl -X PATCH -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' "https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CfgCD" --data "{\"Host\": \"${ISO_URL}\",\"Path\": \"${ISO_PATH}\"}"
 if [ $? -eq 0 ]; then
   # Mount image
   sleep 3
   echo
-  curl -X POST -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CfgCD/Actions/IsoConfig.Mount -d ""
+  curl -X POST -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' "https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CfgCD/Actions/IsoConfig.Mount" -d ""
   if [ $? -eq 0 ]; then
     # Check image is mounted
-    IMAGE=$(curl -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CD1)
+    IMAGE=$(curl -s -k -u ''"${BMC_USERNAME}"'':''"${BMC_PASSWORD}"'' "https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VM1/CD1")
     echo
-    echo $IMAGE
-    if `echo $IMAGE | egrep -q ${ISO_PATH}`; then
+    echo "${IMAGE}"
+    if echo "${IMAGE}" | grep -qF "${ISO_PATH}"; then
       exit 0
     else
       exit 1

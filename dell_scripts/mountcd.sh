@@ -8,15 +8,15 @@
 #### BMC_USERNAME - Has the username configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 #### BMC_PASSWORD - Has the password configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 
-ISO=${1}
+ISO="${1}"
 
 # Disconnect image just in case
-/opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} remoteimage -d
+/opt/dell/srvadmin/bin/idracadm7 -r "${BMC_ENDPOINT}" -u "${BMC_USERNAME}" -p "${BMC_PASSWORD}" remoteimage -d
 
 # Connect image
-/opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} remoteimage -c -l ${ISO}
+/opt/dell/srvadmin/bin/idracadm7 -r "${BMC_ENDPOINT}" -u "${BMC_USERNAME}" -p "${BMC_PASSWORD}" remoteimage -c -l "${ISO}"
 
-if ! /opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} remoteimage -s | grep -F ${ISO}; then
+if ! /opt/dell/srvadmin/bin/idracadm7 -r "${BMC_ENDPOINT}" -u "${BMC_USERNAME}" -p "${BMC_PASSWORD}" remoteimage -s | grep -F "${ISO}"; then
   exit 1
 fi
 

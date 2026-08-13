@@ -7,9 +7,9 @@
 #### BMC_USERNAME - Has the username configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 #### BMC_PASSWORD - Has the password configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 
-/opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} set iDRAC.VirtualMedia.BootOnce 1
+/opt/dell/srvadmin/bin/idracadm7 -r "${BMC_ENDPOINT}" -u "${BMC_USERNAME}" -p "${BMC_PASSWORD}" set iDRAC.VirtualMedia.BootOnce 1
 if [ $? -eq 0 ]; then
-  /opt/dell/srvadmin/bin/idracadm7 -r ${BMC_ENDPOINT} -u ${BMC_USERNAME} -p ${BMC_PASSWORD} set iDRAC.ServerBoot.FirstBootDevice VCD-DVD
+  /opt/dell/srvadmin/bin/idracadm7 -r "${BMC_ENDPOINT}" -u "${BMC_USERNAME}" -p "${BMC_PASSWORD}" set iDRAC.ServerBoot.FirstBootDevice VCD-DVD
   if [ $? -eq 0 ]; then
     exit 0
   else

@@ -8,14 +8,14 @@
 #### BMC_USERNAME - Has the username configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 #### BMC_PASSWORD - Has the password configured in the BMH/InstallConfig and that is used to access BMC_ENDPOINT
 
-ISO=${1}
+ISO="${1}"
 
-USERPASS=${BMC_USERNAME}:${BMC_PASSWORD}
+USERPASS="${BMC_USERNAME}:${BMC_PASSWORD}"
 # Disconnect image just in case (VirtualMedia 2 is CD/DVD 1 is floppy)
-curl -L -ku ${USERPASS} -H "Content-Type: application/json" -H "Accept: application/json" -d '{}'  -X POST https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VirtualMedia/2/Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia
+curl -L -ku "${USERPASS}" -H "Content-Type: application/json" -H "Accept: application/json" -d '{}'  -X POST "https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VirtualMedia/2/Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia"
 # Connect image
 IMAGE_JSON="{\"Image\": \"${ISO}\"}"
-curl -L -ku ${USERPASS} -H "Content-Type: application/json" -H "Accept: application/json" -d "${IMAGE_JSON}" -X POST https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VirtualMedia/2/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia
+curl -L -ku "${USERPASS}" -H "Content-Type: application/json" -H "Accept: application/json" -d "${IMAGE_JSON}" -X POST "https://${BMC_ENDPOINT}/redfish/v1/Managers/1/VirtualMedia/2/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia"
 
 if [ $? -eq 0 ]; then
   exit 0

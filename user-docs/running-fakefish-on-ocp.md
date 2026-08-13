@@ -14,6 +14,8 @@ Once you have your custom FakeFish image, we can get it deployed on OpenShift fo
 
 For this example we will not run FakeFish with TLS enabled, we will do TLS offloading using a `Edge` Route on OpenShift. Other options may use a `Passthrough` or `Reencrypt` Route depending on what you want to achieve.
 
+Since this deployment targets hardware BMCs that validate credentials themselves, the `--validate-credentials` option is not needed. If you are using a backend that does not validate credentials (e.g. KubeVirt), refer to the [KubeVirt-specific documentation](running-fakefish-on-ocp-for-kubevirt.md).
+
 We will run three FakeFish instances for our three servers that do not support RedFish, their IPs are 192.168.10.10, 192.168.10.20 and 192.168.10.30.
 
 1. First, we create a namespace:
